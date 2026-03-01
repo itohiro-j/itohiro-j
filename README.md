@@ -1,6 +1,6 @@
 # 毎日の計画自動化システム
 
-毎朝・毎夕の反復作業を自動化するシェルスクリプトセットです。
+毎朝・毎夕の反復作業を自動化するシェルスクリプト + Slack Bot セットです。
 
 - **朝**: GitHub Issues・todo.txt・バックログを統合して優先順位付きの計画を生成
 - **夕**: 完了/未完了を集計して日次レポートを生成し、未完了を翌日へ繰越
@@ -14,6 +14,9 @@
 ├── scripts/
 │   ├── morning.sh              # 朝の計画作成（メインスクリプト）
 │   ├── evening.sh              # 夕方のレポート作成（メインスクリプト）
+│   ├── slack_bot.py            # Slack Bot（Socket Mode・インタラクティブボタン）
+│   ├── start_bot.sh            # Bot 起動スクリプト
+│   ├── stop_bot.sh             # Bot 停止スクリプト
 │   └── lib/
 │       ├── common.sh           # 共通ユーティリティ
 │       ├── tasks.sh            # タスクパース・Markdown生成
@@ -25,6 +28,8 @@
 │   └── done/                   # 完了アーカイブ（gitignore済み）
 ├── plans/                      # 日次計画（YYYY-MM-DD.md）
 ├── reports/                    # 日次レポート（YYYY-MM-DD.md）
+├── logs/                       # Bot ログ（gitignore済み）
+├── requirements.txt            # Python 依存パッケージ
 ├── config.env.example          # 設定テンプレート
 └── .gitignore
 ```
@@ -43,10 +48,76 @@ cp config.env.example config.env
 
 | 変数 | 説明 | 必須 |
 |------|------|------|
+| `SLACK_BOT_TOKEN` | Bot User OAuth Token（xoxb-...）| **Slack Bot 使用時は必須** |
+| `SLACK_APP_TOKEN` | App-Level Token（xapp-...）| **Slack Bot 使用時は必須** |
+| `SLACK_CHANNEL` | デフォルト投稿先チャンネルID | 任意 |
+| `SLACK_MORNING_REMINDER` | 朝のリマインダー時刻（HH:MM）| 任意 |
+| `SLACK_EVENING_REMINDER` | 夕方のリマインダー時刻（HH:MM）| 任意 |
 | `GITHUB_TOKEN` | GitHub Personal Access Token | 任意 |
 | `GITHUB_USER` | GitHub ユーザー名 | 任意 |
 | `GITHUB_REPOS` | 対象リポジトリ（カンマ区切り）| 任意 |
-| `SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL | 任意 |
+
+---
+
+## Slack App のセットアップ
+
+### 1. Slack App の作成
+
+1. [api.slack.com/apps](https://api.slack.com/apps) を開く
+2. **「Create New App」** → **「From scratch」** を選択
+3. App Name（例: `Daily Planner`）と Workspace を入力
+
+### 2. 必要な権限（OAuth Scopes）を追加
+
+**「OAuth & Permissions」** → **「Bot Token Scopes」** に以下を追加:
+
+| スコープ | 用途 |
+|---------|------|
+| `chat:write` | メッセージの投稿 |
+| `im:read` | DM の読み取り |
+| `im:write` | DM への書き込み |
+| `app_mentions:read` | メンションの受信 |
+| `channels:read` | チャンネル情報の取得 |
+
+### 3. Interactivity を有効化
+
+**「Interactivity & Shortcuts」** → **「Interactivity」** を **ON** に設定
+
+> Socket Mode を使うため Request URL は不要です
+
+### 4. Socket Mode を有効化
+
+1. **「Socket Mode」** → **「Enable Socket Mode」** を ON
+2. **「App-Level Tokens」** → **「Generate Token」** をクリック
+3. Token Name を入力し、`connections:write` スコープを付与
+4. 生成された `xapp-...` トークンを `SLACK_APP_TOKEN` に設定
+
+### 5. Event Subscriptions を設定
+
+**「Event Subscriptions」** → **「Enable Events」** を ON にして、以下の Bot Events を追加:
+
+| イベント | 用途 |
+|---------|------|
+| `message.im` | DM メッセージの受信 |
+| `app_home_opened` | App Home タブを開いたとき |
+| `app_mention` | チャンネルでのメンション |
+
+### 6. App Home を有効化
+
+**「App Home」** → **「Home Tab」** を **ON** に設定
+
+### 7. アプリをワークスペースにインストール
+
+**「Install App」** → **「Install to Workspace」** → 認証
+→ 生成された `xoxb-...` トークンを `SLACK_BOT_TOKEN` に設定
+
+### 8. Slack Bot を起動
+
+```bash
+bash scripts/start_bot.sh
+```
+
+Slack で App Home を開くとボタンが表示されます。
 
 > GitHub・Slack を使わない場合は空のままで動作します。
 

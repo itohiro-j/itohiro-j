@@ -11,6 +11,10 @@ tasks/done/*.txt
 *.bak
 .DS_Store
 
+# Bot 関連
+.bot.pid
+logs/
+
 # 生成ファイル（versioning したい場合はこの行を削除）
 # plans/
 # reports/
