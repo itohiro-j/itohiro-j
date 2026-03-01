@@ -1,0 +1,16 @@
+# 設定ファイル（機密情報を含む）
+config.env
+
+# 完了タスクアーカイブ（ローカルのみ保存、必要なら除外を解除）
+tasks/done/*.txt
+# .gitkeep は追跡対象
+!tasks/done/.gitkeep
+
+# 一時ファイル
+*.tmp
+*.bak
+.DS_Store
+
+# 生成ファイル（versioning したい場合はこの行を削除）
+# plans/
+# reports/
